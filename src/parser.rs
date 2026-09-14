@@ -31,6 +31,28 @@ enum Tok {
     Eof,
 }
 
+impl Tok {
+    /// Human-readable form for error messages, e.g. "'{'" or "a string".
+    /// Deliberately not derived from Debug, which prints Rust-shaped
+    /// output like `Ident("flag")` that nobody hand-editing a flags file
+    /// would recognize.
+    fn describe(&self) -> String {
+        match self {
+            Tok::Ident(s) => format!("'{}'", s),
+            Tok::Str(_) => "a string".to_string(),
+            Tok::Int(n) => format!("'{}'", n),
+            Tok::LBrace => "'{'".to_string(),
+            Tok::RBrace => "'}'".to_string(),
+            Tok::LBracket => "'['".to_string(),
+            Tok::RBracket => "']'".to_string(),
+            Tok::Equals => "'='".to_string(),
+            Tok::Comma => "','".to_string(),
+            Tok::Percent => "'%'".to_string(),
+            Tok::Eof => "end of file".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Token {
     tok: Tok,
@@ -235,7 +257,7 @@ impl Parser {
         if std::mem::discriminant(&t.tok) == std::mem::discriminant(&expected) {
             Ok(t)
         } else {
-            Err(self.error_at(&t, format!("expected {:?}, found {:?}", expected, t.tok)))
+            Err(self.error_at(&t, format!("expected {}, found {}", expected.describe(), t.tok.describe())))
         }
     }
 
@@ -243,13 +265,20 @@ impl Parser {
         let kw = self.advance();
         match kw.tok {
             Tok::Ident(ref s) if s == "flag" => {}
-            _ => return Err(self.error_at(&kw, "expected 'flag'")),
+            _ => {
+                return Err(self.error_at(&kw, format!("expected 'flag', found {}", kw.tok.describe())))
+            }
         }
 
         let name_tok = self.advance();
         let name = match name_tok.tok {
             Tok::Ident(ref s) => s.clone(),
-            _ => return Err(self.error_at(&name_tok, "expected flag name")),
+            _ => {
+                return Err(self.error_at(
+                    &name_tok,
+                    format!("expected a flag name, found {}", name_tok.tok.describe()),
+                ))
+            }
         };
         if !is_valid_flag_name(&name) {
             return Err(self.error_at(
@@ -278,7 +307,12 @@ impl Parser {
             let field_tok = self.advance();
             let field_name = match field_tok.tok {
                 Tok::Ident(ref s) => s.clone(),
-                _ => return Err(self.error_at(&field_tok, "expected field name")),
+                _ => {
+                    return Err(self.error_at(
+                        &field_tok,
+                        format!("expected a field name, found {}", field_tok.tok.describe()),
+                    ))
+                }
             };
             self.expect(Tok::Equals)?;
 
@@ -288,14 +322,24 @@ impl Parser {
                     enabled = Some(match v.tok {
                         Tok::Ident(ref s) if s == "true" => true,
                         Tok::Ident(ref s) if s == "false" => false,
-                        _ => return Err(self.error_at(&v, "expected 'true' or 'false'")),
+                        _ => {
+                            return Err(self.error_at(
+                                &v,
+                                format!("expected 'true' or 'false', found {}", v.tok.describe()),
+                            ))
+                        }
                     });
                 }
                 "description" => {
                     let v = self.advance();
                     match v.tok {
                         Tok::Str(s) => description = Some(s),
-                        _ => return Err(self.error_at(&v, "expected a string")),
+                        _ => {
+                            return Err(self.error_at(
+                                &v,
+                                format!("expected a string, found {}", v.tok.describe()),
+                            ))
+                        }
                     }
                 }
                 "rollout" => {
@@ -305,7 +349,10 @@ impl Parser {
                         _ => {
                             return Err(self.error_at(
                                 &v,
-                                "expected an integer percentage, e.g. rollout = 25%",
+                                format!(
+                                    "expected an integer percentage, e.g. rollout = 25%, found {}",
+                                    v.tok.describe()
+                                ),
                             ))
                         }
                     };
@@ -325,7 +372,12 @@ impl Parser {
                             let t = self.advance();
                             let tag = match t.tok {
                                 Tok::Ident(ref s) => s.clone(),
-                                _ => return Err(self.error_at(&t, "expected a tag name")),
+                                _ => {
+                                    return Err(self.error_at(
+                                        &t,
+                                        format!("expected a tag name, found {}", t.tok.describe()),
+                                    ))
+                                }
                             };
                             if tags.contains(&tag) {
                                 return Err(self.error_at(&t, format!("duplicate tag '{}'", tag)));

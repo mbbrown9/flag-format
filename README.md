@@ -101,10 +101,10 @@ cargo build --release
 ## Status
 
 Early skeleton. The parser, validator and both printers work end to end for
-the format described above. Not yet done, roughly in order: friendlier
-parse error messages (currently token-shaped, not always human-shaped),
-reading from stdin, a `--check` mode that validates without printing, and
-a way to diff two flag files.
+the format described above, and parse errors describe what was actually
+found in plain terms rather than printing Rust's token debug output. Not
+yet done, roughly in order: reading from stdin, a `--check` mode that
+validates without printing, and a way to diff two flag files.
 
 ## License
 
